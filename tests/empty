@@ -1,0 +1,134 @@
+# -*- mode: shell-script -*-
+
+#src_file=../src/usr/local/sbin/swallow
+
+# prefix_cmd="
+# . /etc/shlib
+
+# source '$src_file'
+
+# logchunk -vvv next -c # }
+# "
+
+
+try "logchunk -vvv next \"$test_tmpdir/test1/test.log\"" \
+    "log file doesn't exist"
+is out "" NOCOLOR
+is err part "o such file" NOCOLOR
+
+
+export CHUNK_STATE_DIR="$test_tmpdir/state"
+(
+    cd "$test_tmpdir"
+    mkdir test1
+    cat <<EOF > test1/test.log
+EOF
+
+)
+
+##
+## prefix
+##
+
+
+try "logchunk -vvv next \"$test_tmpdir/test1/test.log\"" \
+    "no chunk yet"
+#is err "" NOCOLOR
+is errlvl 1
+is out "\
+" NOCOLOR
+
+try "logchunk -vvv next \"$test_tmpdir/test1/test.log\"" \
+    "no chunk yet, second time"
+#is err "" NOCOLOR
+is errlvl 1
+is out "\
+" NOCOLOR
+
+try "logchunk -vvv next \"$test_tmpdir/test1/test.log\"" \
+    "no chunk yet, third time"
+#is err "" NOCOLOR
+is errlvl 1
+is out "\
+" NOCOLOR
+
+## simulating rotation
+(
+    cd "$test_tmpdir"
+    mkdir -p test1
+    cat <<EOF > test1/test.log
+2023/03/26 01:28:08 [7384] receiving file list
+2023/03/28 02:55:26 [7384] sent 1093062 bytes  received 149167008 bytes  total size 194591709635
+EOF
+    mv test1/test.log test1/test_2023-03-26.log
+    cat <<EOF > test1/test.log
+EOF
+
+)
+
+try "logchunk -vvv next \"$test_tmpdir/test1/test.log\"" \
+    "rotated, chunk in rotated log"
+#is err "" NOCOLOR
+is errlvl 0
+is out "\
+2023/03/26 01:28:08 [7384] receiving file list
+2023/03/28 02:55:26 [7384] sent 1093062 bytes  received 149167008 bytes  total size 194591709635
+" NOCOLOR
+
+
+try "logchunk -vvv next \"$test_tmpdir/test1/test.log\"" \
+    "no new chunk yet"
+#is err "" NOCOLOR
+is errlvl 1
+is out "\
+" NOCOLOR
+
+
+## simulating rotation
+(
+    cd "$test_tmpdir"
+    mkdir -p test1
+    mv test1/test.log test1/test_2023-03-28.log
+    gzip test1/test_2023-03-26.log
+    cat <<EOF > test1/test.log
+EOF
+    # ls -al test1
+    # echo
+)
+
+try "logchunk -vvv next \"$test_tmpdir/test1/test.log\"" \
+    "rotation, first gz, still no new chunk"
+#is err "" NOCOLOR
+is errlvl 1
+is out "\
+" NOCOLOR
+
+
+## simulating rotation
+(
+    cd "$test_tmpdir"
+    mkdir -p test1
+    cat <<EOF > test1/test.log
+2023/03/29 01:28:08 [7384] receiving file list
+2023/03/29 02:55:26 [7384] sent 1 bytes  received 2 bytes  total size 3
+EOF
+    mv test1/test.log test1/test_2023-03-29.log
+    gzip test1/test_2023-03-28.log
+    cat <<EOF > test1/test.log
+EOF
+    mv test1/test.log test1/test_2023-03-30.log
+    gzip test1/test_2023-03-29.log
+    cat <<EOF > test1/test.log
+EOF
+)
+
+try "logchunk -vvv next \"$test_tmpdir/test1/test.log\"" \
+    "2 rotation, a new chunk in gz"
+#is err "" NOCOLOR
+is errlvl 0
+is out "\
+2023/03/29 01:28:08 [7384] receiving file list
+2023/03/29 02:55:26 [7384] sent 1 bytes  received 2 bytes  total size 3
+" NOCOLOR
+
+

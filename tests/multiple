@@ -1,0 +1,56 @@
+# -*- mode: shell-script -*-
+
+#src_file=../src/usr/local/sbin/swallow
+
+# prefix_cmd="
+# . /etc/shlib
+
+# source '$src_file'
+
+
+export CHUNK_STATE_DIR="$test_tmpdir/state"
+(
+    cd "$test_tmpdir"
+    mkdir test1
+    cat <<EOF > test1/test.log
+2023/02/26 00:50:57 [5678] sent 60 bytes  received 2185 bytes  total size 31702364
+2023/02/26 01:27:59 [7272] receiving file list
+2023/02/26 01:28:06 [7272] sent 544 bytes  received 149707 bytes  total size 9088521
+2023/02/26 01:28:08 [7384] receiving file list
+2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.kal.fr/GPUCache/data_1 270336 438
+2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
+2023/02/26 01:28:46 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
+EOF
+
+        cat <<EOF > test1/test2.log
+2023/02/26 01:27:59 [7384] receiving file list
+2023/02/26 02:00:00 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
+EOF
+
+)
+
+
+##
+## prefix
+##
+
+
+try "logchunk -vvv next -c foo \"$test_tmpdir/test1/test.log\"" \
+    "simple first chunk first log"
+#is err "" NOCOLOR
+is errlvl 0
+is out "\
+2023/02/26 01:27:59 [7272] receiving file list
+2023/02/26 01:28:06 [7272] sent 544 bytes  received 149707 bytes  total size 9088521
+" NOCOLOR
+
+try "logchunk -vvv next -c foo \"$test_tmpdir/test1/test2.log\"" \
+    "simple first chunk second log"
+#is err "" NOCOLOR
+is errlvl 0
+is out "\
+2023/02/26 01:27:59 [7384] receiving file list
+2023/02/26 02:00:00 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
+" NOCOLOR
+
+

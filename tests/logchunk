@@ -1,0 +1,157 @@
+# -*- mode: shell-script -*-
+
+export CHUNK_STATE_DIR="$test_tmpdir/state"
+(
+    cd "$test_tmpdir"
+    mkdir test1
+    cat <<EOF > test1/test.log
+2023/02/26 00:50:57 [5678] sent 60 bytes  received 2185 bytes  total size 31702364
+2023/02/26 01:27:59 [7272] receiving file list
+2023/02/26 01:28:06 [7272] sent 544 bytes  received 149707 bytes  total size 9088521
+2023/02/26 01:28:08 [7384] receiving file list
+2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.kal.fr/GPUCache/data_1 270336 438
+2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
+2023/02/26 01:28:46 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
+EOF
+
+)
+
+
+##
+## prefix
+##
+
+
+try "logchunk -vvv next -c foo \"$test_tmpdir/test1/test.log\"" \
+    "simple first chunk, no cursor, no rotated logs"
+#is err "" NOCOLOR
+is errlvl 0
+is out "\
+2023/02/26 01:27:59 [7272] receiving file list
+2023/02/26 01:28:06 [7272] sent 544 bytes  received 149707 bytes  total size 9088521
+" NOCOLOR
+
+try "logchunk -vvv next -c foo \"$test_tmpdir/test1/test.log\"" \
+    "simple second chunk, no rotated logs"
+#is err "" NOCOLOR
+is errlvl 0
+is out "\
+2023/02/26 01:28:08 [7384] receiving file list
+2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.kal.fr/GPUCache/data_1 270336 438
+2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
+2023/02/26 01:28:46 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
+" NOCOLOR
+
+try "logchunk -vvv next -c foo2 \"$test_tmpdir/test1/test.log\"" \
+    "simple first chunk on new foo2 cursor, no rotated logs"
+is errlvl 0
+is out "\
+2023/02/26 01:27:59 [7272] receiving file list
+2023/02/26 01:28:06 [7272] sent 544 bytes  received 149707 bytes  total size 9088521
+" NOCOLOR
+#is err "" NOCOLOR
+
+
+try "logchunk -vvv next -c foo \"$test_tmpdir/test1/test.log\"" \
+    "simple third chunk doesn't exist, no rotated logs"
+is out "\
+" NOCOLOR
+is errlvl 1
+#is err "" NOCOLOR
+
+try "logchunk -vvv next -c foo2 \"$test_tmpdir/test1/test.log\"" \
+    "simple third chunk on new foo2 cursor, no rotated logs"
+is errlvl 0
+is out "\
+2023/02/26 01:28:08 [7384] receiving file list
+2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.kal.fr/GPUCache/data_1 270336 438
+2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
+2023/02/26 01:28:46 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
+" NOCOLOR
+#is err "" NOCOLOR
+
+## simulating rotation
+(
+    cd "$test_tmpdir"
+    mkdir -p test1
+    mv test1/test.log test1/test_2023-02-26.log
+    cat <<EOF > test1/test.log
+2023/02/27 02:27:02 [12647] receiving file list
+2023/02/27 02:27:04 [12647] sent 544 bytes  received 149707 bytes  total size 9088521
+2023/02/27 02:27:07 [12759] receiving file list
+2023/02/27 02:28:40 [12759] >f..t...... recv weave/failed/forms.json 10 34
+2023/02/27 02:28:40 [12759] >f..t...... recv weave/failed/history.json 10 34
+EOF
+
+)
+
+try "logchunk -vvv next -c foo \"$test_tmpdir/test1/test.log\"" \
+    "simple continuation chunk, rotated logs"
+is errlvl 0
+#is err ""
+is out "\
+2023/02/27 02:27:02 [12647] receiving file list
+2023/02/27 02:27:04 [12647] sent 544 bytes  received 149707 bytes  total size 9088521
+" NOCOLOR
+
+try "logchunk -vvv next -c foo \"$test_tmpdir/test1/test.log\"" \
+    "only partial chunk is available, rotated logs"
+is errlvl 1
+#is err ""
+is out "\
+" NOCOLOR
+
+
+#is err "" NOCOLOR
+
+
+## simulating rotation while chunk is running
+(
+    cd "$test_tmpdir"
+    mkdir -p test1
+    mv test1/test.log test1/test_2023-02-27.log
+    cat <<EOF > test1/test.log
+2023/02/28 02:28:40 [12759] >f..t...... recv weave/failed/prefs.json 10 34
+2023/02/28 02:28:40 [12759] >f..t...... recv weave/failed/tabs.json 10 34
+2023/02/28 02:55:26 [12759] sent 1093062 bytes  received 149167008 bytes  total size 194591709635
+EOF
+
+)
+
+
+try "logchunk -vvv next -c foo \"$test_tmpdir/test1/test.log\"" \
+    "only get full chunk despite rotation, rotated logs"
+#is err ""
+is errlvl 0
+is out "\
+2023/02/27 02:27:07 [12759] receiving file list
+2023/02/27 02:28:40 [12759] >f..t...... recv weave/failed/forms.json 10 34
+2023/02/27 02:28:40 [12759] >f..t...... recv weave/failed/history.json 10 34
+2023/02/28 02:28:40 [12759] >f..t...... recv weave/failed/prefs.json 10 34
+2023/02/28 02:28:40 [12759] >f..t...... recv weave/failed/tabs.json 10 34
+2023/02/28 02:55:26 [12759] sent 1093062 bytes  received 149167008 bytes  total size 194591709635
+" NOCOLOR
+
+
+
+try "logchunk -vvv next -c foo2 \"$test_tmpdir/test1/test.log\"" \
+    "continue foo2 through rotated logs"
+#is err ""
+is errlvl 0
+is out "\
+2023/02/27 02:27:02 [12647] receiving file list
+2023/02/27 02:27:04 [12647] sent 544 bytes  received 149707 bytes  total size 9088521
+" NOCOLOR
+
+try "logchunk -vvv next -c foo2 \"$test_tmpdir/test1/test.log\"" \
+    "continue foo2 through rotated logs"
+#is err ""
+is errlvl 0
+is out "\
+2023/02/27 02:27:07 [12759] receiving file list
+2023/02/27 02:28:40 [12759] >f..t...... recv weave/failed/forms.json 10 34
+2023/02/27 02:28:40 [12759] >f..t...... recv weave/failed/history.json 10 34
+2023/02/28 02:28:40 [12759] >f..t...... recv weave/failed/prefs.json 10 34
+2023/02/28 02:28:40 [12759] >f..t...... recv weave/failed/tabs.json 10 34
+2023/02/28 02:55:26 [12759] sent 1093062 bytes  received 149167008 bytes  total size 194591709635
+" NOCOLOR
