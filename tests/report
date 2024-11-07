@@ -35,7 +35,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 1
 #is err "" NOCOLOR
 is errlvl 0
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
 " NOCOLOR
 
 try "
@@ -90,7 +90,7 @@ Error: (Line 1) Unexpected start line format:
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
 " NOCOLOR
 
 
@@ -122,7 +122,7 @@ Error: (Line 1) Invalid UTF-8 data [ff fe fd]:
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
 " NOCOLOR
 
 
@@ -160,7 +160,7 @@ Error: (Line 5) Unexpected lines found after the end line:
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
 " NOCOLOR
 
 
@@ -197,7 +197,7 @@ Error: (Line 1) Failed to parse \"2023/13/26 01:28:08\" as a date (input is out 
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
 " NOCOLOR
 
 
@@ -233,7 +233,7 @@ Error: (Line 4) Failed to parse \"2023/13/26 01:28:46\" as a date (input is out 
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
 " NOCOLOR
 
 
@@ -270,7 +270,7 @@ Error: (Line 4) Failed to parse received count \"1442394872349283749283423948723
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
 " NOCOLOR
 
 
@@ -308,7 +308,7 @@ Error: (Line 4) Failed to parse total count \"9088521487234928374928342394872397
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
 " NOCOLOR
 
 
@@ -346,7 +346,7 @@ Error: (Line 4) Unexpected log line format:
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
 " NOCOLOR
 
 
@@ -363,25 +363,22 @@ EOF
 
 )
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" && exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" || exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] || {
-   echo 'chunk file expected' >&2
+[ -e \"$test_tmpdir/chunk.txt\" ] && {
+   echo 'chunk file unexpected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/chunk.txt\" || exit 6
 exit 8
 " \
     "chunk with no end"
 is err "\
-Error: (Line 3) No chunk end line found in the log:
-  2023/12/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
-
-  Failed chunk is saved to \"$test_tmpdir/chunk.txt\"
+I logchunk.import: Log inserted into the database successfully.
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
+2|foo|1703554088|1703554116|303104|1073|2|0
 " NOCOLOR
 
 
@@ -416,7 +413,8 @@ Error: (Line 2) Unexpected PID change from 810 to 811 on file change line:
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
+1|foo|1677374888|1677374926|9088521|149707|2|1
+2|foo|1703554088|1703554116|303104|1073|2|0
 " NOCOLOR
 
 
@@ -445,12 +443,13 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
 }
 exit 8
 " \
-    "chunk with no end"
+    "chunk with different type of lines"
 is err "\
 I logchunk.import: Log inserted into the database successfully.
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|9088521|149707|2
-2|foo|1703554088|1703554126|90885214872349|144239|5
+1|foo|1677374888|1677374926|9088521|149707|2|1
+2|foo|1703554088|1703554116|303104|1073|2|0
+3|foo|1703554088|1703554126|90885214872349|144239|5|1
 " NOCOLOR

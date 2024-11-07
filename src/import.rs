@@ -49,6 +49,7 @@ struct RsyncLog {
     total_bytes_sync: i64,
     total_bytes_sent: i64,
     num_files_changed: i64,
+    is_chunk_complete: bool,
 }
 
 fn create_table_if_not_exists(conn: &Connection) -> SqliteResult<()> {
@@ -60,7 +61,8 @@ fn create_table_if_not_exists(conn: &Connection) -> SqliteResult<()> {
              end_time INTEGER NOT NULL,
              total_bytes_sync INTEGER NOT NULL,
              total_bytes_sent INTEGER NOT NULL,
-             num_files_changed INTEGER NOT NULL
+             num_files_changed INTEGER NOT NULL,
+             is_chunk_complete BOOLEAN NOT NULL DEFAULT FALSE
          )",
         [],
     )?;
@@ -69,15 +71,16 @@ fn create_table_if_not_exists(conn: &Connection) -> SqliteResult<()> {
 
 fn insert_log(conn: &Connection, log: &RsyncLog) -> SqliteResult<()> {
     conn.execute(
-        "INSERT INTO rsync_log (label, start_time, end_time, total_bytes_sync, total_bytes_sent, num_files_changed)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT INTO rsync_log (label, start_time, end_time, total_bytes_sync, total_bytes_sent, num_files_changed, is_chunk_complete)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![
             log.label,
             log.start_time.to_string(),
             log.end_time.to_string(),
             log.total_bytes_sync,
             log.total_bytes_sent,
-            log.num_files_changed
+            log.num_files_changed,
+            log.is_chunk_complete,
         ],
     )?;
     Ok(())
@@ -175,6 +178,7 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
     let mut total_bytes_sync = 0;
     let mut total_bytes_sent = 0;
     let mut num_files_changed = 0;
+    let mut is_chunk_complete = false;
     let current_pid: String;
 
     let start_re =
@@ -205,7 +209,7 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
 
     for line in reader {
         let line = line.map_err(|e| e.to_string())?;
-        if end_time.is_some() {
+        if is_chunk_complete {
             return Err("Unexpected lines found after the end line".to_string());
         }
 
@@ -228,6 +232,7 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
                 |e| format!("Failed to parse received count {:?} as an i64 integer ({}) on last chunk line",
                             &caps[4], e.to_string())
             )?;
+            is_chunk_complete = true;
         } else if let Some(caps) = file_change_re.captures(&line) {
             if current_pid != caps[2] {
                 return Err(
@@ -235,6 +240,18 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
                             current_pid, &caps[2])
                 );
             }
+            total_bytes_sync += caps[4].parse::<i64>().map_err(
+                |e| format!("Failed to parse file size {:?} as an i64 integer ({}) on file change line",
+                            &caps[4], e.to_string())
+            )?;
+            total_bytes_sent += caps[5].parse::<i64>().map_err(
+                |e| format!("Failed to parse sent size {:?} as an i64 integer ({}) on file change line",
+                            &caps[5], e.to_string())
+            )?;
+            end_time = Some(parse_timestamp(&caps[1]).map_err(
+                |e| format!("Failed to parse {:?} as a date ({}) on file change line",
+                            &caps[1], e.to_string())
+            )?);
             num_files_changed += 1;
         } else {
             return Err(format!("Unexpected log line format"));
@@ -242,7 +259,7 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
     }
     // Ensure the last line is the end line
     if !end_time.is_some() {
-        return Err("No chunk end line found in the log".to_string());
+        return Err("No lines found in the chunk".to_string());
     }
     let end_time = end_time.unwrap();  // safe to unwrap
 
@@ -253,6 +270,7 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
         total_bytes_sync,
         total_bytes_sent,
         num_files_changed,
+        is_chunk_complete,
     };
 
     let conn = Connection::open(sqlite_db_path).map_err(|e| e.to_string())?;
