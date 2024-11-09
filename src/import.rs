@@ -51,7 +51,7 @@ struct RsyncLog {
     total_bytes_sync_final: i64,
     total_bytes_sent_final: i64,
     num_files_changed: i64,
-    is_chunk_complete: bool,
+    chunk_parse_error: i8,
 }
 
 fn create_table_if_not_exists(conn: &Connection) -> SqliteResult<()> {
@@ -66,7 +66,7 @@ fn create_table_if_not_exists(conn: &Connection) -> SqliteResult<()> {
              total_bytes_sync_final INTEGER NOT NULL,
              total_bytes_sent_final INTEGER NOT NULL,
              num_files_changed INTEGER NOT NULL,
-             is_chunk_complete BOOLEAN NOT NULL DEFAULT FALSE
+             chunk_parse_error INTEGER NOT NULL
          )",
         [],
     )?;
@@ -84,7 +84,7 @@ fn insert_log(conn: &Connection, log: &RsyncLog) -> SqliteResult<()> {
              total_bytes_sync_final,
              total_bytes_sent_final,
              num_files_changed,
-             is_chunk_complete
+             chunk_parse_error
          )
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         params![
@@ -96,7 +96,7 @@ fn insert_log(conn: &Connection, log: &RsyncLog) -> SqliteResult<()> {
             log.total_bytes_sync_final,
             log.total_bytes_sent_final,
             log.num_files_changed,
-            log.is_chunk_complete,
+            log.chunk_parse_error,
         ],
     )?;
     Ok(())
@@ -196,7 +196,7 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
     let mut total_bytes_sync_final = 0;
     let mut total_bytes_sent_final = 0;
     let mut num_files_changed = 0;
-    let mut is_chunk_complete = false;
+    let mut chunk_parse_error = 1;
     let current_pid: String;
 
     let start_re =
@@ -227,7 +227,7 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
 
     for line in reader {
         let line = line.map_err(|e| e.to_string())?;
-        if is_chunk_complete {
+        if chunk_parse_error == 0 {
             return Err("Unexpected lines found after the end line".to_string());
         }
 
@@ -250,7 +250,7 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
                 |e| format!("Failed to parse received count {:?} as an i64 integer ({}) on last chunk line",
                             &caps[4], e.to_string())
             )?;
-            is_chunk_complete = true;
+            chunk_parse_error = 0;
         } else if let Some(caps) = file_change_re.captures(&line) {
             if current_pid != caps[2] {
                 return Err(
@@ -290,7 +290,7 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
         total_bytes_sync_final,
         total_bytes_sent_final,
         num_files_changed,
-        is_chunk_complete,
+        chunk_parse_error,
     };
 
     let conn = Connection::open(sqlite_db_path).map_err(|e| e.to_string())?;
