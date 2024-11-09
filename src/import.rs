@@ -9,8 +9,11 @@ use std::rc::Rc;
 use std::fmt::Write as OtherWrite;
 
 
-const ERR_CHUNK_INCOMPLETE: u8  = 0b0000_0001;
-const ERR_CHUNK_NO_START: u8    = 0b0000_0010;
+const ERR_CHUNK_INCOMPLETE: u8                   = 0b0000_0001;
+const ERR_CHUNK_NO_START: u8                     = 0b0000_0010;
+const ERR_CONNECTION_CLOSED: u8                  = 0b0000_0100;
+const ERR_CONNECTION_CLOSED_WITOUT_FOLLOW_UP: u8 = 0b0000_1000;
+
 
 pub trait BufReadExt: BufRead {
     fn split_with_delimiter(self, delim: u8) -> SplitWithDelimiter<Self>
@@ -222,6 +225,13 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
         .map_err(|e| e.to_string())?;
     let file_change_re = Regex::new(
         r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(\d+)\] ([>.c][L.dfsct+]+ recv|\*deleting   del.) .* (\d+) (\d+)$",
+    ).map_err(|e| e.to_string())?;
+    let connection_closed_re = Regex::new(
+        r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(\d+)\] rsync: connection unexpectedly closed \((\d+) bytes received so far\) \[generator\]$",
+    )
+    .map_err(|e| e.to_string())?;
+    let connection_closed_followup_re = Regex::new(
+        r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(\d+)\] rsync error: (.*)$",
     )
     .map_err(|e| e.to_string())?;
 
@@ -248,6 +258,14 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
             return Err("Unexpected lines found after the end line".to_string());
         }
 
+        if chunk_parse_error & ERR_CONNECTION_CLOSED_WITOUT_FOLLOW_UP != 0 {
+            if let Some(_caps) = connection_closed_followup_re.captures(&line) {
+                chunk_parse_error &= !ERR_CONNECTION_CLOSED_WITOUT_FOLLOW_UP;
+                continue
+            } else {
+                return Err("Expected follow-up line after connection closed".to_string());
+            }
+        }
         if let Some(caps) = end_re.captures(&line) {
             if current_pid != caps[2] {
                 return Err(
@@ -288,6 +306,22 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
                             &caps[1], e.to_string())
             )?);
             num_files_changed += 1;
+        } else if let Some(caps) = connection_closed_re.captures(&line) {
+            if current_pid != caps[2] {
+                return Err(
+                    format!("Unexpected PID change from {} to {} on connection closed line",
+                            current_pid, &caps[2])
+                );
+            }
+            end_time = Some(parse_timestamp(&caps[1]).map_err(
+                |e| format!("Failed to parse {:?} as a date ({}) on connection closed line",
+                            &caps[1], e.to_string())
+            )?);
+            total_bytes_sent_final = caps[3].parse::<i64>().map_err(
+                |e| format!("Failed to parse transfered count {:?} as an i64 integer ({}) on connection closed line",
+                            &caps[3], e.to_string())
+            )?;
+            chunk_parse_error |= ERR_CONNECTION_CLOSED | ERR_CONNECTION_CLOSED_WITOUT_FOLLOW_UP;
         } else {
             return Err(format!("Unexpected log line format"));
         }
