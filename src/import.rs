@@ -167,27 +167,39 @@ pub fn load(label: &str, sqlite_db_path: &str, failed_chunk_path: &str) -> Resul
     let mut copy_lines_iter = _mk_copy_lines_iter(reader, failed_chunk_file, last_line.clone(), last_idx.clone());
 
     // call load_iter with the iterator and catch the error
-    let result = load_iter(label, sqlite_db_path, &mut copy_lines_iter);
-    if let Err(e) = result {
-        if e == "No content".to_string() {
+    let result = load_iter(label, &mut copy_lines_iter);
+    match result {
+        Ok(log) => {
+
+            let conn = Connection::open(sqlite_db_path).map_err(|e| e.to_string())?;
+
+            create_table_if_not_exists(&conn).map_err(|e| e.to_string())?;
+            insert_log(&conn, &log).map_err(|e| e.to_string())?;
+
+            log::info!("Log inserted into the database successfully.");
+
             // remove the failed chunk
             std::fs::remove_file(failed_chunk_path).map_err(|e| e.to_string())?;
-            return Err(e);
         }
-        // fetch last line of the failed chunk
-        let last_failed_line = String::from_utf8_lossy(&last_line.borrow()).to_string();
+        Err(e) => {
+            if e == "No content".to_string() {
+                // remove the failed chunk
+                std::fs::remove_file(failed_chunk_path).map_err(|e| e.to_string())?;
+                return Err(e);
+            }
+            // fetch last line of the failed chunk
+            let last_failed_line = String::from_utf8_lossy(&last_line.borrow()).to_string();
 
-        let last_idx = *last_idx.borrow() + 1;
-        copy_lines_iter.for_each(|_| {});  // consume the iterator to save the failed chunk
-        return Err(format!("(Line {}) {}:\n  {}\n\n  Failed chunk is saved to {:?}", last_idx, e, last_failed_line, failed_chunk_path));
+            let last_idx = *last_idx.borrow() + 1;
+            copy_lines_iter.for_each(|_| {});  // consume the iterator to save the failed chunk
+            return Err(format!("(Line {}) {}:\n  {}\n\n  Failed chunk is saved to {:?}", last_idx, e, last_failed_line, failed_chunk_path));
+        }
     }
-    // if no error, remove the failed chunk
-    std::fs::remove_file(failed_chunk_path).map_err(|e| e.to_string())?;
 
     Ok(())
 }
 
-pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<Item = Result<String, String>>) -> Result<(), String> {
+fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, String>>) -> Result<RsyncLog, String> {
 
     let start_time: NaiveDateTime;
     let mut end_time: Option<NaiveDateTime> = None;
@@ -293,12 +305,5 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
         chunk_parse_error,
     };
 
-    let conn = Connection::open(sqlite_db_path).map_err(|e| e.to_string())?;
-
-    create_table_if_not_exists(&conn).map_err(|e| e.to_string())?;
-    insert_log(&conn, &log).map_err(|e| e.to_string())?;
-
-    log::info!("Log inserted into the database successfully.");
-
-    Ok(())
+    Ok(log)
 }
