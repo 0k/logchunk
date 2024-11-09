@@ -9,6 +9,9 @@ use std::rc::Rc;
 use std::fmt::Write as OtherWrite;
 
 
+const ERR_CHUNK_INCOMPLETE: u8  = 0b0000_0001;
+const ERR_CHUNK_NO_START: u8    = 0b0000_0010;
+
 pub trait BufReadExt: BufRead {
     fn split_with_delimiter(self, delim: u8) -> SplitWithDelimiter<Self>
     where
@@ -51,7 +54,7 @@ struct RsyncLog {
     total_bytes_sync_final: i64,
     total_bytes_sent_final: i64,
     num_files_changed: i64,
-    chunk_parse_error: i8,
+    chunk_parse_error: u8,
 }
 
 fn create_table_if_not_exists(conn: &Connection) -> SqliteResult<()> {
@@ -208,7 +211,7 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
     let mut total_bytes_sync_final = 0;
     let mut total_bytes_sent_final = 0;
     let mut num_files_changed = 0;
-    let mut chunk_parse_error = 1;
+    let mut chunk_parse_error = ERR_CHUNK_NO_START;
     let current_pid: String;
 
     let start_re =
@@ -230,6 +233,8 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
                             &caps[1], e.to_string())
             )?;
             current_pid = caps[2].to_string();
+            chunk_parse_error &= !ERR_CHUNK_NO_START;
+            chunk_parse_error |= ERR_CHUNK_INCOMPLETE;
         } else {
             return Err(format!("Unexpected start line format"))
         }
@@ -239,7 +244,7 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
 
     for line in reader {
         let line = line.map_err(|e| e.to_string())?;
-        if chunk_parse_error == 0 {
+        if chunk_parse_error & ERR_CHUNK_INCOMPLETE == 0 {
             return Err("Unexpected lines found after the end line".to_string());
         }
 
@@ -262,7 +267,7 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
                 |e| format!("Failed to parse received count {:?} as an i64 integer ({}) on last chunk line",
                             &caps[4], e.to_string())
             )?;
-            chunk_parse_error = 0;
+            chunk_parse_error &= !ERR_CHUNK_INCOMPLETE;
         } else if let Some(caps) = file_change_re.captures(&line) {
             if current_pid != caps[2] {
                 return Err(
