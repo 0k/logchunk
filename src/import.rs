@@ -13,6 +13,7 @@ const ERR_CHUNK_INCOMPLETE: u8                   = 0b0000_0001;
 const ERR_CHUNK_NO_START: u8                     = 0b0000_0010;
 const ERR_CONNECTION_CLOSED: u8                  = 0b0000_0100;
 const ERR_CONNECTION_CLOSED_WITOUT_FOLLOW_UP: u8 = 0b0000_1000;
+const ERR_SIGNAL_RECEIVED: u8                    = 0b0001_0000;
 
 
 pub trait BufReadExt: BufRead {
@@ -233,7 +234,12 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
     let connection_closed_followup_re = Regex::new(
         r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(\d+)\] rsync error: (.*)$",
     )
-    .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
+    let signal_received_re = Regex::new(
+        r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(\d+)\] rsync error: received SIGINT, SIGTERM, or SIGHUP.*$",
+    )
+        .map_err(|e| e.to_string())?;
+
 
     if let Some(first_line) = reader.next() {
         let first_line = first_line.map_err(|e| e.to_string())?;
@@ -261,6 +267,7 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
         if chunk_parse_error & ERR_CONNECTION_CLOSED_WITOUT_FOLLOW_UP != 0 {
             if let Some(_caps) = connection_closed_followup_re.captures(&line) {
                 chunk_parse_error &= !ERR_CONNECTION_CLOSED_WITOUT_FOLLOW_UP;
+                chunk_parse_error &= !ERR_CHUNK_INCOMPLETE;
                 continue
             } else {
                 return Err("Expected follow-up line after connection closed".to_string());
@@ -322,6 +329,19 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
                             &caps[3], e.to_string())
             )?;
             chunk_parse_error |= ERR_CONNECTION_CLOSED | ERR_CONNECTION_CLOSED_WITOUT_FOLLOW_UP;
+        } else if let Some(caps) = signal_received_re.captures(&line) {
+            if current_pid != caps[2] {
+                return Err(
+                    format!("Unexpected PID change from {} to {} on signal received line",
+                            current_pid, &caps[2])
+                );
+            }
+            end_time = Some(parse_timestamp(&caps[1]).map_err(
+                |e| format!("Failed to parse {:?} as a date ({}) on signal received line",
+                            &caps[1], e.to_string())
+            )?);
+            chunk_parse_error |= ERR_SIGNAL_RECEIVED;
+            chunk_parse_error &= !ERR_CHUNK_INCOMPLETE;
         } else {
             return Err(format!("Unexpected log line format"));
         }
