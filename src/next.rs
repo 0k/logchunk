@@ -442,8 +442,17 @@ pub fn next_chunk(full_file_path: PathBuf, cursor_state_path: PathBuf) -> Result
                 }
             };
 
-            if first_match_line_nb != 1 {
-                log::warn!("Ignoring {} lines before beg line", first_match_line_nb)
+            if first_match_line_nb != 0 {
+                // get the first line of the file
+                let prefix = reader(&log_file_path)?
+                    .skip(offset as usize)
+                    .take(first_match_line_nb as usize + 1)
+                    .collect::<Result<Vec<String>, String>>()?
+                    .join("\n");
+                return Err(format!("Unexpected {} lines before beg line:\n{}",
+                                      first_match_line_nb,
+                                   prefix));
+
             }
             log::trace!("  found beg line at: {}", first_match_line_nb);
             log::trace!("    line: {}", first_line);
@@ -650,7 +659,7 @@ pub fn next_chunk(full_file_path: PathBuf, cursor_state_path: PathBuf) -> Result
                 cursor_file_write(
                     &cursor_file,
                     last_match_ts,
-                    foffset + last_match_line_nb,
+                    foffset + last_match_line_nb + 1,
                     log_file_name,
                     &first_line,
                 )?;

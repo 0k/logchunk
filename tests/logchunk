@@ -5,7 +5,6 @@ export CHUNK_STATE_DIR="$test_tmpdir/state"
     cd "$test_tmpdir"
     mkdir test1
     cat <<EOF > test1/test.log
-2023/02/26 00:50:57 [5678] sent 60 bytes  received 2185 bytes  total size 31702364
 2023/02/26 01:27:59 [7272] receiving file list
 2023/02/26 01:28:06 [7272] sent 544 bytes  received 149707 bytes  total size 9088521
 2023/02/26 01:28:08 [7384] receiving file list
