@@ -48,6 +48,8 @@ struct RsyncLog {
     end_time: i64,
     total_bytes_sync: i64,
     total_bytes_sent: i64,
+    total_bytes_sync_final: i64,
+    total_bytes_sent_final: i64,
     num_files_changed: i64,
     is_chunk_complete: bool,
 }
@@ -61,6 +63,8 @@ fn create_table_if_not_exists(conn: &Connection) -> SqliteResult<()> {
              end_time INTEGER NOT NULL,
              total_bytes_sync INTEGER NOT NULL,
              total_bytes_sent INTEGER NOT NULL,
+             total_bytes_sync_final INTEGER NOT NULL,
+             total_bytes_sent_final INTEGER NOT NULL,
              num_files_changed INTEGER NOT NULL,
              is_chunk_complete BOOLEAN NOT NULL DEFAULT FALSE
          )",
@@ -71,14 +75,26 @@ fn create_table_if_not_exists(conn: &Connection) -> SqliteResult<()> {
 
 fn insert_log(conn: &Connection, log: &RsyncLog) -> SqliteResult<()> {
     conn.execute(
-        "INSERT INTO rsync_log (label, start_time, end_time, total_bytes_sync, total_bytes_sent, num_files_changed, is_chunk_complete)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO rsync_log (
+             label,
+             start_time,
+             end_time,
+             total_bytes_sync,
+             total_bytes_sent,
+             total_bytes_sync_final,
+             total_bytes_sent_final,
+             num_files_changed,
+             is_chunk_complete
+         )
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         params![
             log.label,
             log.start_time.to_string(),
             log.end_time.to_string(),
             log.total_bytes_sync,
             log.total_bytes_sent,
+            log.total_bytes_sync_final,
+            log.total_bytes_sent_final,
             log.num_files_changed,
             log.is_chunk_complete,
         ],
@@ -177,6 +193,8 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
     let mut end_time: Option<NaiveDateTime> = None;
     let mut total_bytes_sync = 0;
     let mut total_bytes_sent = 0;
+    let mut total_bytes_sync_final = 0;
+    let mut total_bytes_sent_final = 0;
     let mut num_files_changed = 0;
     let mut is_chunk_complete = false;
     let current_pid: String;
@@ -224,11 +242,11 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
                 |e| format!("Failed to parse {:?} as a date ({}) on last chunk line",
                             &caps[1], e.to_string())
             )?);
-            total_bytes_sync = caps[5].parse::<i64>().map_err(
+            total_bytes_sync_final = caps[5].parse::<i64>().map_err(
                 |e| format!("Failed to parse total count {:?} as an i64 integer ({}) on last chunk line",
                             &caps[5], e.to_string())
             )?;
-            total_bytes_sent = caps[4].parse::<i64>().map_err(
+            total_bytes_sent_final = caps[4].parse::<i64>().map_err(
                 |e| format!("Failed to parse received count {:?} as an i64 integer ({}) on last chunk line",
                             &caps[4], e.to_string())
             )?;
@@ -269,6 +287,8 @@ pub fn load_iter(label: &str, sqlite_db_path: &str, reader: &mut impl Iterator<I
         end_time: end_time.and_utc().timestamp(),
         total_bytes_sync,
         total_bytes_sent,
+        total_bytes_sync_final,
+        total_bytes_sent_final,
         num_files_changed,
         is_chunk_complete,
     };
