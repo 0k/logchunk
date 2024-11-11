@@ -34,6 +34,14 @@ EOF
 ## prefix
 ##
 
+try "logchunk -vvv next -c foo \"$test_tmpdir/test1/test.log\"" \
+    "simple first chunk first log with prefix"
+#is err "" NOCOLOR
+is errlvl 0
+is out "\
+2023/02/26 00:50:57 [5678] sent 60 bytes  received 2185 bytes  total size 31702364
+" NOCOLOR
+
 
 try "logchunk -vvv next -c foo \"$test_tmpdir/test1/test.log\"" \
     "simple first chunk first log"

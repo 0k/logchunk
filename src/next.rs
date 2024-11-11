@@ -14,6 +14,9 @@ use std::str::FromStr;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+const ST_FIRST_LINE_FOUND: u8 = 0b0000_0001;
+
+
 fn mk_iterf<P: AsRef<Path> + Copy>(
     filename: P,
 ) -> Result<Box<dyn Iterator<Item = Result<String, String>>>, String> {
@@ -111,11 +114,12 @@ fn glob_patterns(patterns: Vec<String>) -> Box<dyn Iterator<Item = Result<PathBu
     Box::new(combined)
 }
 
-fn cursor_file_read(cursor_file: &Path) -> Result<(i64, i64, String, String), String> {
+fn cursor_file_read(cursor_file: &Path) -> Result<(i64, i64, String, String, u8), String> {
     let mut cts: i64 = 0;
     let mut foffset: i64 = 0;
     let mut cfile = String::new();
     let mut cfile_first_line = String::new();
+    let mut flag: u8 = 0;
     if cursor_file.exists() {
         // values are separated by \0
         let file = File::open(cursor_file)
@@ -146,6 +150,7 @@ fn cursor_file_read(cursor_file: &Path) -> Result<(i64, i64, String, String), St
                     1 => foffset = s.parse::<i64>().map_err(|e| e.to_string())?,
                     2 => cfile = s.to_string(),
                     3 => cfile_first_line = s.to_string(),
+                    4 => flag = s.parse::<u8>().map_err(|e| e.to_string())?,
                     _ => return Err("Cursor file is corrupted (too many values)".to_string()),
                 }
             } else {
@@ -153,7 +158,7 @@ fn cursor_file_read(cursor_file: &Path) -> Result<(i64, i64, String, String), St
             }
             idx += 1;
         }
-        if idx != 4 {
+        if idx != 5 {
             return Err("Cursor file is corrupted (not enough values)".to_string());
         }
     }
@@ -162,8 +167,9 @@ fn cursor_file_read(cursor_file: &Path) -> Result<(i64, i64, String, String), St
     log::trace!("  | file_offset: {}", foffset);
     log::trace!("  | file: {}", cfile);
     log::trace!("  | first_line: '{}'", cfile_first_line);
+    log::trace!("  | flag: {}", flag);
 
-    Ok((cts, foffset, cfile, cfile_first_line))
+    Ok((cts, foffset, cfile, cfile_first_line, flag))
 }
 
 fn ts_day_trim(ts: i64) -> Result<i64, String> {
@@ -184,8 +190,9 @@ fn cursor_file_write(
     foffset: i64,
     cfile: &str,
     cfile_first_line: &str,
+    flag: u8,
 ) -> Result<(), String> {
-    let content = format!("{:?}\0{}\0{}\0{}\0", cts, foffset, cfile, cfile_first_line);
+    let content = format!("{:?}\0{}\0{}\0{}\0{}\0", cts, foffset, cfile, cfile_first_line, flag);
     std::fs::write(cursor_file, content)
         .map_err(|e| format!("Can't write cursor file {}: {}", cursor_file.display(), e))?;
     log::trace!("Stored in cursor:");
@@ -193,6 +200,7 @@ fn cursor_file_write(
     log::trace!("  | file_offset: {}", foffset);
     log::trace!("  | file: {}", cfile);
     log::trace!("  | first_line: '{}'", cfile_first_line);
+    log::trace!("  | flag: '{}'", flag);
 
     Ok(())
 }
@@ -272,7 +280,7 @@ pub fn next_chunk(full_file_path: PathBuf, cursor_state_path: PathBuf) -> Result
     let content_file_path = cursor_state_path.join("content");
     let cursor_file = cursor_state_path.join("cursor");
 
-    let (cts, mut foffset, mut cfile, cfile_first_line) = cursor_file_read(&cursor_file)?;
+    let (cts, mut foffset, mut cfile, cfile_first_line, mut flag) = cursor_file_read(&cursor_file)?;
 
     // Was the file the cursor is pointing to, rotated ?
 
@@ -350,7 +358,7 @@ pub fn next_chunk(full_file_path: PathBuf, cursor_state_path: PathBuf) -> Result
         }
         log_file_paths.push((log_file_path.clone(), basename_log_file.to_string()));
     }
-
+    let mut reached_cursor_file = false;
     for (log_file_path, basename_log_file) in log_file_paths.into_iter() {
         log::trace!("Considering: {}", basename_log_file);
 
@@ -406,9 +414,21 @@ pub fn next_chunk(full_file_path: PathBuf, cursor_state_path: PathBuf) -> Result
             file_rotated = false;
         };
 
+        if ! file_rotated && cfile != "" && cfile_first_line != "" {
+            if ! reached_cursor_file {
+                if log_file_name == cfile {
+                    reached_cursor_file = true;
+                } else {
+                    log::trace!("  Skipping file '{}' as it is prior to cursor file", basename_log_file);
+                    continue;
+                }
+            }
+        }
+
         let mut first_line = String::new();
 
-        if content_file_path.exists() {
+        if content_file_path.exists() && flag & ST_FIRST_LINE_FOUND != 0 {
+            // then first line of chunk is first line of content file
             first_line = BufReader::new(File::open(&content_file_path).map_err(|e| e.to_string())?)
                 .lines()
                 .next()
@@ -434,26 +454,133 @@ pub fn next_chunk(full_file_path: PathBuf, cursor_state_path: PathBuf) -> Result
                 Some(Ok((line_nb, line))) => (line_nb, line),
                 Some(Err(e)) => return Err(e),
                 None => {
-                    log::debug!(
-                        "Skipping file '{}': no beginning of chunk.",
-                        basename_log_file
+                    log::debug!("  Finished {} with no begin of chunk.", basename_log_file);
+
+                    let content_line_nb = if content_file_path.exists() {
+                        let content_line_nb =
+                            BufReader::new(File::open(&content_file_path).map_err(|e| e.to_string())?)
+                            .lines()
+                            .count() as i64;
+                        log::trace!("  content file exists");
+                        content_line_nb
+                    } else {
+                        log::trace!("  no content file yet");
+                        0
+                    };
+                    log::trace!("  content_line_nb: {}", content_line_nb);
+
+                    file_append(
+                        &content_file_path,
+                        reader(&log_file_path)?.skip(offset as usize),
+                    )?;
+
+                    // log current content file with a prefix
+                    log::trace!(
+                        "CONTENT:\n  | {}",
+                        std::fs::read_to_string(&content_file_path)
+                            .map_err(|e| e.to_string())?
+                            .replace("\n", "\n  | ")
                     );
+
+                    let new_content_line_nb =
+                        BufReader::new(File::open(&content_file_path).map_err(|e| e.to_string())?)
+                        .lines()
+                        .count() as i64;
+                    if new_content_line_nb == 0 {
+                        // remove the file
+                        std::fs::remove_file(&content_file_path)
+                            .map_err(|e| e.to_string())?;
+                    }
+
+                    log::trace!("  New content_line_nb: {}", new_content_line_nb);
+                    log::trace!("  Previous offset: {}", offset);
+
+                    foffset = offset + new_content_line_nb - content_line_nb;
+
+                    log::trace!("  New offset: {}", foffset);
+                    // log::trace!(
+                    //     "  Stored in content:\n  | {}",
+                    //     std::fs::read_to_string(&content_file_path)
+                    //         .map_err(|e| e.to_string())?
+                    //         .replace("\n", "\n  | ")
+                    // );
                     continue;
                 }
             };
 
-            if first_match_line_nb != 0 {
-                // get the first line of the file
-                let prefix = reader(&log_file_path)?
-                    .skip(offset as usize)
-                    .take(first_match_line_nb as usize + 1)
-                    .collect::<Result<Vec<String>, String>>()?
-                    .join("\n");
-                return Err(format!("Unexpected {} lines before beg line:\n{}",
-                                      first_match_line_nb,
-                                   prefix));
+            if first_match_line_nb != 0 || content_file_path.exists() {  // is there a prefix
 
-            }
+                log::trace!("  found beg line at: {}", first_match_line_nb);
+                // There are unexpected prefix lines, we'll output
+                // them as a chunk
+                let first_match_line_nb = first_match_line_nb as i64;
+
+                // get last line of prefix
+                let last_prefix_line = if content_file_path.exists() && first_match_line_nb == 0 {
+                    BufReader::new(File::open(&content_file_path).map_err(|e| e.to_string())?)
+                        .lines()
+                        .last()
+                        .ok_or("Couldn't read last line from content file")?
+                        .map_err(|e| e.to_string())?
+                } else {
+                    reader(&log_file_path)?
+                        .skip((offset + first_match_line_nb - 1) as usize)
+                        .next()
+                        .ok_or("Couldn't read line before beg line")?
+                        .map_err(|e| e.to_string())?
+                };
+
+                // Extract date and time from line before first_line
+                //   2023/02/27 02:28:40 [12759] >f..t...... recv weave/failed/forms.json 10 34
+                let last_prefix_line_match_datetime = last_prefix_line
+                    .split(' ')
+                    .take(2)
+                    .collect::<Vec<&str>>()
+                    .join(" ");
+                // Convert date to timestamp
+                let last_prefix_line_match_ts = chrono::NaiveDateTime::parse_from_str(
+                    last_prefix_line_match_datetime.as_str(),
+                     "%Y/%m/%d %H:%M:%S",
+                )
+                .map_err(|e| format!("Couldn't parse date from {}: {}", last_prefix_line_match_datetime, e))?
+                .and_utc()
+                .timestamp();
+
+                if content_file_path.exists() {
+                    let content = File::open(&content_file_path).map_err(|e| e.to_string())?;
+                    let mut reader = BufReader::new(content);
+                    let mut stdout = std::io::stdout();
+                    copy(&mut reader, &mut stdout).map_err(|e| e.to_string())?;
+                    std::fs::remove_file(&content_file_path).map_err(|e| e.to_string())?;
+                }
+
+                let lines = reader(&log_file_path)?
+                    .skip(offset as usize)
+                    .take((first_match_line_nb) as usize);
+
+                for line in lines {
+                    let line = line.map_err(|e| format!("Can't read line: {e}"))?;
+                    writeln!(std::io::stdout(), "{}", line)
+                        .map_err(|e| format!("Can't write line: {}", e))?;
+                }
+                let first_line = reader(&log_file_path)?
+                    .next()
+                    .ok_or("Couldn't read first line from file")?
+                    .map_err(|e| e.to_string())?;
+
+                cursor_file_write(
+                    &cursor_file,
+                    last_prefix_line_match_ts,
+                    offset + first_match_line_nb,
+                    log_file_name,
+                    &first_line,
+                    flag,
+                )?;
+
+                return Ok(true);
+
+           }
+            flag |= ST_FIRST_LINE_FOUND;
             log::trace!("  found beg line at: {}", first_match_line_nb);
             log::trace!("    line: {}", first_line);
             log::trace!("    offset: {}", offset);
@@ -662,6 +789,7 @@ pub fn next_chunk(full_file_path: PathBuf, cursor_state_path: PathBuf) -> Result
                     foffset + last_match_line_nb + 1,
                     log_file_name,
                     &first_line,
+                    flag,
                 )?;
 
                 return Ok(true);
@@ -691,28 +819,29 @@ pub fn next_chunk(full_file_path: PathBuf, cursor_state_path: PathBuf) -> Result
 
     // get last line of content file
     let new_cts = if content_file_path.exists() {
-        let content_last_line = BufReader::new(File::open(&content_file_path).map_err(|e| {
+        let content_lines = BufReader::new(File::open(&content_file_path).map_err(|e| {
             format!(
                 "Error opening {}: {}",
                 content_file_path.display(),
                 e.to_string()
             )
         })?)
-        .lines()
-        .last()
-        .ok_or("Couldn't read last line from content file")?
-        .map_err(|e| e.to_string())?;
+            .lines();
+        // if content file is empty, we'll use the last line of the file
+        if let Some(Ok(content_last_line)) = content_lines.last() {
+            let content_last_datetime = content_last_line
+                .split(' ')
+                .take(2)
+                .collect::<Vec<&str>>()
+                .join(" ");
 
-        let content_last_datetime = content_last_line
-            .split(' ')
-            .take(2)
-            .collect::<Vec<&str>>()
-            .join(" ");
-
-        chrono::NaiveDateTime::parse_from_str(&content_last_datetime.as_str(), "%Y/%m/%d %H:%M:%S")
-            .map_err(|e| format!("Couldn't parse date from {}: {}", content_last_datetime, e))?
-            .and_utc()
-            .timestamp()
+            chrono::NaiveDateTime::parse_from_str(&content_last_datetime.as_str(), "%Y/%m/%d %H:%M:%S")
+                .map_err(|e| format!("Couldn't parse date from {}: {}", content_last_datetime, e))?
+                .and_utc()
+                .timestamp()
+        } else {
+            cts
+        }
     } else {
         cts
     };
@@ -725,6 +854,7 @@ pub fn next_chunk(full_file_path: PathBuf, cursor_state_path: PathBuf) -> Result
             .to_str()
             .ok_or("Invalid Unicode in file name")?,
         first_line.as_str(),
+        flag,
     )?;
 
     log::trace!("Didn't find any full entry");

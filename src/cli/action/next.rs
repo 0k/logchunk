@@ -25,7 +25,7 @@ pub fn run(file_name: &str, cursor_name: &str) -> Result<bool, String> {
     });
     // get sha1 of chunk_state_dir string
     let mut hasher = sha1::Sha1::new();
-    hasher.update(chunk_state_dir.as_bytes());
+    hasher.update(log_file_path.to_str().unwrap());
     let result = hasher.finalize();
     let cursor_sha1 = format!("{:x}", result);
     let cursor_state_dir = format!("{}/{}/{}", chunk_state_dir, cursor_sha1, cursor_name);
