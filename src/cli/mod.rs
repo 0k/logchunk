@@ -38,8 +38,8 @@ pub fn run() -> Result<bool, String> {
         Some(def::Actions::Import {
             sqlite_db_path,
             label,
-            failed_chunk_path,
-        }) => action::import::run(label, sqlite_db_path, failed_chunk_path),
+            failed_chunks_folder,
+        }) => action::import::run(label, sqlite_db_path, failed_chunks_folder),
         None => Err("Missing action".to_string()),
     }
 }

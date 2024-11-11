@@ -7,8 +7,6 @@
 
 # source '$src_file'
 
-# logchunk -vvv next -c # }
-# "
 
 (
     cd "$test_tmpdir"
@@ -24,9 +22,9 @@ EOF
 
 
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" || exit 1
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" || exit 1
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 1
-! [ -e \"$test_tmpdir/chunk.txt\" ] || {
+! [ -e \"$test_tmpdir/\"*.chunk ] || {
    echo 'no chunk file expected' >&2
    exit 1
 }
@@ -40,11 +38,11 @@ is out "\
 
 try "
 rm -f \"$test_tmpdir/chunk.txt\"
-false | logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" || {
+false | logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" || {
     echo 'failed logchunk' >&2
-    [ -e \"$test_tmpdir/chunk.txt\" ] && {
+    [ -e \"$test_tmpdir/\"*.chunk ] && {
        echo 'chunk file unexpected' >&2
-       ls -al \"$test_tmpdir/chunk.txt\" >&2
+       ls -al \"$test_tmpdir/\"*.chunk >&2
        exit 14
     }
     exit 1
@@ -66,19 +64,20 @@ is out "" NOCOLOR
 2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
 2023/02/26 01:28:46 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
 
 try "
-logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" && exit 3
+logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" && exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] || {
+[ -e \"$test_tmpdir/\"*.chunk ] || {
    echo 'chunk file expected' >&2
+   ls -al \"$test_tmpdir/\" >&2
    exit 5
 }
-diff \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/chunk.txt\" || exit 6
+diff \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/9ce5bc5c2078c6870dde8d6090fbf30ed37fde50.chunk\" || exit 6
 exit 8
 " \
     "chunk with no first line"
@@ -86,7 +85,7 @@ is err "\
 Error: (Line 1) Unexpected start line format:
   2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.kal.fr/GPUCache/data_1 270336 438
 
-  Failed chunk is saved to \"$test_tmpdir/chunk.txt\"
+  Failed chunk is saved to \"$test_tmpdir/9ce5bc5c2078c6870dde8d6090fbf30ed37fde50.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -99,18 +98,19 @@ is out "\
     mkdir -p test1
     ## This is 'Little-endian UTF-16 Unicode text, with no line terminators'
     printf "\xff\xfe\xfd" > test1/test.log
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" && exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" && exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] || {
+[ -e \"$test_tmpdir\"/*.chunk ] || {
    echo 'chunk file expected' >&2
+   ls -al \"$test_tmpdir\" >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/chunk.txt\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/f09626f3ff80600048d7cfe413957134027d1b4d.chunk\" || exit 6
 exit 8
 " \
     "chunk with non unicode data"
@@ -118,7 +118,7 @@ is err "\
 Error: (Line 1) Invalid UTF-8 data [ff fe fd]:
   ���
 
-  Failed chunk is saved to \"$test_tmpdir/chunk.txt\"
+  Failed chunk is saved to \"$test_tmpdir/f09626f3ff80600048d7cfe413957134027d1b4d.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -137,18 +137,18 @@ is out "\
 2023/02/26 01:28:46 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
 2023/02/26 01:28:46 [7384] spurious data
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" && exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" && exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] || {
+[ -e \"$test_tmpdir\"/*.chunk ] || {
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/chunk.txt\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/2b6567a90e9f08d491c94c6a518f15aff1c39504.chunk\" || exit 6
 exit 8
 " \
     "chunk with data after last line"
@@ -156,7 +156,7 @@ is err "\
 Error: (Line 5) Unexpected lines found after the end line:
   2023/02/26 01:28:46 [7384] spurious data
 
-  Failed chunk is saved to \"$test_tmpdir/chunk.txt\"
+  Failed chunk is saved to \"$test_tmpdir/2b6567a90e9f08d491c94c6a518f15aff1c39504.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -174,18 +174,18 @@ is out "\
 2023/13/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
 2023/13/26 01:28:46 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" && exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" && exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] || {
+[ -e \"$test_tmpdir\"/*.chunk ] || {
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/chunk.txt\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5.chunk\" || exit 6
 exit 8
 " \
     "chunk with invalid date first line"
@@ -193,7 +193,7 @@ is err "\
 Error: (Line 1) Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line:
   2023/13/26 01:28:08 [7384] receiving file list
 
-  Failed chunk is saved to \"$test_tmpdir/chunk.txt\"
+  Failed chunk is saved to \"$test_tmpdir/62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -210,18 +210,18 @@ is out "\
 2023/12/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
 2023/13/26 01:28:46 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" && exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" && exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] || {
+[ -e \"$test_tmpdir\"/*.chunk ] || {
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/chunk.txt\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/d712f2db8b17e8afa87bddad01ab4d290c91519c.chunk\" || exit 6
 exit 8
 " \
     "chunk with invalid date end line"
@@ -229,7 +229,7 @@ is err "\
 Error: (Line 4) Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line:
   2023/13/26 01:28:46 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
 
-  Failed chunk is saved to \"$test_tmpdir/chunk.txt\"
+  Failed chunk is saved to \"$test_tmpdir/d712f2db8b17e8afa87bddad01ab4d290c91519c.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -247,18 +247,18 @@ is out "\
 2023/12/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
 2023/12/26 01:28:46 [7384] sent 544 bytes  received 14423948723492837492834239487239707 bytes  total size 9088521
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" && exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" && exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] || {
+[ -e \"$test_tmpdir\"/*.chunk ] || {
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/chunk.txt\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/caba624d98773e7643fe2687855cd4e0af4a81d5.chunk\" || exit 6
 exit 8
 " \
     "chunk with invalid received count"
@@ -266,7 +266,7 @@ is err "\
 Error: (Line 4) Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line:
   2023/12/26 01:28:46 [7384] sent 544 bytes  received 14423948723492837492834239487239707 bytes  total size 9088521
 
-  Failed chunk is saved to \"$test_tmpdir/chunk.txt\"
+  Failed chunk is saved to \"$test_tmpdir/caba624d98773e7643fe2687855cd4e0af4a81d5.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -285,18 +285,18 @@ is out "\
 2023/12/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
 2023/12/26 01:28:46 [7384] sent 544 bytes  received 144239 bytes  total size 908852148723492837492834239487239707
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" && exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" && exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] || {
+[ -e \"$test_tmpdir\"/*.chunk ] || {
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/chunk.txt\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/38403f147ddf07ab3acd19b9a285b8101c561ec3.chunk\" || exit 6
 exit 8
 " \
     "chunk with invalid total count"
@@ -304,7 +304,7 @@ is err "\
 Error: (Line 4) Failed to parse total count \"908852148723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line:
   2023/12/26 01:28:46 [7384] sent 544 bytes  received 144239 bytes  total size 908852148723492837492834239487239707
 
-  Failed chunk is saved to \"$test_tmpdir/chunk.txt\"
+  Failed chunk is saved to \"$test_tmpdir/38403f147ddf07ab3acd19b9a285b8101c561ec3.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -323,18 +323,18 @@ is out "\
 2023/12/26 01:28:36 [7384] >fX.t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
 2023/12/26 01:28:46 [7384] sent 544 bytes  received 144239 bytes  total size 908852148723492837492834239487239707
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" && exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" && exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] || {
+[ -e \"$test_tmpdir\"/*.chunk ] || {
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/chunk.txt\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/7ec25bc8506af2b8ea1db5bf77690a055c2ded67.chunk\" || exit 6
 exit 8
 " \
     "chunk with unexpected log line format"
@@ -342,7 +342,7 @@ is err "\
 Error: (Line 4) Unexpected log line format:
   2023/12/26 01:28:36 [7384] >fX.t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
 
-  Failed chunk is saved to \"$test_tmpdir/chunk.txt\"
+  Failed chunk is saved to \"$test_tmpdir/7ec25bc8506af2b8ea1db5bf77690a055c2ded67.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -359,13 +359,13 @@ is out "\
 2023/12/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.kal.fr/GPUCache/data_1 270336 438
 2023/12/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" || exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" || exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] && {
+[ -e \"$test_tmpdir\"/*.chunk ] && {
    echo 'chunk file unexpected' >&2
    exit 5
 }
@@ -391,17 +391,17 @@ is out "\
 2023/12/26 01:28:36 [811] >f..t...... recv .config/https%3A/chat.kal.fr/GPUCache/data_1 270336 438
 2023/12/26 01:28:36 [810] >f..t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" && exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" && exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] || {
+[ -e \"$test_tmpdir\"/*.chunk ] || {
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/chunk.txt\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/80c0f33423ac23b5d8e50f2c03d6c9c3736bc879.chunk\" || exit 6
 exit 8
 " \
     "chunk with pid mismatch"
@@ -409,7 +409,7 @@ is err "\
 Error: (Line 2) Unexpected PID change from 810 to 811 on file change line:
   2023/12/26 01:28:36 [811] >f..t...... recv .config/https%3A/chat.kal.fr/GPUCache/data_1 270336 438
 
-  Failed chunk is saved to \"$test_tmpdir/chunk.txt\"
+  Failed chunk is saved to \"$test_tmpdir/80c0f33423ac23b5d8e50f2c03d6c9c3736bc879.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -431,13 +431,13 @@ is out "\
 2023/04/24 14:27:18 [810] .d..t...... recv home/vaab/.config/Rocket.Chat 450 0
 2023/12/26 01:28:46 [810] sent 544 bytes  received 144239 bytes  total size 90885214872349
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" || exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" || exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] && {
+[ -e \"$test_tmpdir\"/*.chunk ] && {
    echo 'chunk file unexpected' >&2
    exit 5
 }
@@ -465,13 +465,13 @@ is out "\
 2023/04/25 13:04:53 [810] rsync: connection unexpectedly closed (78648723 bytes received so far) [generator]
 2023/04/25 13:04:53 [810] rsync error: error in rsync protocol data stream (code 12) at io.c(226) [generator=3.1.3]
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" || exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" || exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] && {
+[ -e \"$test_tmpdir\"/*.chunk ] && {
    echo 'chunk file unexpected' >&2
    exit 5
 }
@@ -499,19 +499,19 @@ is out "\
 2023/04/25 12:28:53 [810] >f..t...... recv home/vaab/.mozilla/firefox/7qlzjjhh.default-release/weave/failed/tabs.json 10 34
 2023/04/28 15:28:57 [810] rsync error: received SIGINT, SIGTERM, or SIGHUP (code 20) at io.c(1633) [generator=3.1.3]
 EOF
-    rm -f chunk.txt
+    rm -f *.chunk
 
 )
 
-try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir/chunk.txt\" < \"$test_tmpdir/test1/test.log\" || exit 3
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" || exit 3
 echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
-[ -e \"$test_tmpdir/chunk.txt\" ] && {
+[ -e \"$test_tmpdir\"/*.chunk ] && {
    echo 'chunk file unexpected' >&2
    exit 5
 }
 exit 8
 " \
-    "chunk with connection closed"
+    "chunk with signal close"
 is err "\
 I logchunk.import: Log inserted into the database successfully.
 " NOCOLOR

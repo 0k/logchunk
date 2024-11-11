@@ -1,12 +1,12 @@
 use chrono::{format::ParseError, NaiveDateTime};
 use regex::Regex;
 use rusqlite::{params, Connection, Result as SqliteResult};
-use std::fs::OpenOptions;
 use std::io::{self, BufRead, Write};
 use std::fs::File;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::fmt::Write as OtherWrite;
+use tempfile::NamedTempFile;
 
 
 const ERR_CHUNK_INCOMPLETE: u8                   = 0b0000_0001;
@@ -157,21 +157,44 @@ fn _mk_copy_lines_iter<'a>(
     })
 }
 
-pub fn load(label: &str, sqlite_db_path: &str, failed_chunk_path: &str) -> Result<(), String> {
+fn file_sha1(file: File) -> Result<String, String> {
+    use sha1::{Digest, Sha1};
+    use std::io::Read;
+
+    let mut hasher = Sha1::new();
+    let mut reader = std::io::BufReader::new(file);
+    let mut buffer = [0; 4096];
+    loop {
+        let count = reader.read(&mut buffer).map_err(|e| e.to_string())?;
+        if count == 0 {
+            break;
+        }
+        hasher.update(&buffer[..count]);
+    }
+    let result = hasher.finalize();
+    let mut s = String::new();
+    for byte in result.iter() {
+        write!(&mut s, "{:02x}", byte).unwrap();
+    }
+    Ok(s)
+}
+
+
+pub fn load(label: &str, sqlite_db_path: &str, failed_chunk_folder: &str) -> Result<(), String> {
     let stdin = io::stdin();
     let reader = stdin.lock().split_with_delimiter(b'\n');
-    let failed_chunk_file = OpenOptions::new()
-        .create(true)
-        .read(true)
-        .write(true)
-        .open(failed_chunk_path)
+    let failed_chunk_file = NamedTempFile::new()
         .map_err(|e| e.to_string())?;
 
     let last_line = Rc::new(RefCell::new(Vec::new()));
     let last_idx = Rc::new(RefCell::new(0));
 
     // make iterator that saves lines in failed_chunk_path
-    let mut copy_lines_iter = _mk_copy_lines_iter(reader, failed_chunk_file, last_line.clone(), last_idx.clone());
+    let mut copy_lines_iter = _mk_copy_lines_iter(
+        reader,
+        failed_chunk_file.reopen().map_err(|e| e.to_string())?,
+        last_line.clone(),
+        last_idx.clone());
 
     // call load_iter with the iterator and catch the error
     let result = load_iter(label, &mut copy_lines_iter);
@@ -184,21 +207,22 @@ pub fn load(label: &str, sqlite_db_path: &str, failed_chunk_path: &str) -> Resul
             insert_log(&conn, &log).map_err(|e| e.to_string())?;
 
             log::info!("Log inserted into the database successfully.");
-
-            // remove the failed chunk
-            std::fs::remove_file(failed_chunk_path).map_err(|e| e.to_string())?;
         }
         Err(e) => {
             if e == "No content".to_string() {
-                // remove the failed chunk
-                std::fs::remove_file(failed_chunk_path).map_err(|e| e.to_string())?;
-                return Err(e);
+                return Err(e); // will automatically remove the chunk file
             }
+            let sha1 = file_sha1(
+                failed_chunk_file.reopen().map_err(|e| e.to_string())?
+            ).map_err(|e| e.to_string())?;
+            let failed_chunk_path = format!("{}/{}.chunk", failed_chunk_folder, sha1);
             // fetch last line of the failed chunk
             let last_failed_line = String::from_utf8_lossy(&last_line.borrow()).to_string();
 
             let last_idx = *last_idx.borrow() + 1;
             copy_lines_iter.for_each(|_| {});  // consume the iterator to save the failed chunk
+
+            failed_chunk_file.persist(&failed_chunk_path).map_err(|e| e.to_string())?;
             return Err(format!("(Line {}) {}:\n  {}\n\n  Failed chunk is saved to {:?}", last_idx, e, last_failed_line, failed_chunk_path));
         }
     }

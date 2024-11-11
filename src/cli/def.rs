@@ -53,7 +53,7 @@ pub enum Actions {
         label: String,
 
         /// The failed chunk output if any
-        #[clap(name = "FAILED_CHUNK_PATH")]
-        failed_chunk_path: String,
+        #[clap(name = "FAILED_CHUNKS_FOLDER")]
+        failed_chunks_folder: String,
     },
 }
