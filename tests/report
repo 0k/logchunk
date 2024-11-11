@@ -33,7 +33,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 1
 #is err "" NOCOLOR
 is errlvl 0
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
 " NOCOLOR
 
 try "
@@ -89,7 +89,8 @@ Error: (Line 1) Unexpected start line format:
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
 " NOCOLOR
 
 
@@ -122,7 +123,9 @@ Error: (Line 1) Invalid UTF-8 data [ff fe fd]:
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
 " NOCOLOR
 
 
@@ -160,7 +163,10 @@ Error: (Line 5) Unexpected lines found after the end line:
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
 " NOCOLOR
 
 
@@ -197,7 +203,11 @@ Error: (Line 1) Failed to parse \"2023/13/26 01:28:08\" as a date (input is out 
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
 " NOCOLOR
 
 
@@ -233,7 +243,12 @@ Error: (Line 4) Failed to parse \"2023/13/26 01:28:46\" as a date (input is out 
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
+6|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line|d712f2db8b17e8afa87bddad01ab4d290c91519c
 " NOCOLOR
 
 
@@ -270,7 +285,13 @@ Error: (Line 4) Failed to parse received count \"1442394872349283749283423948723
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
+6|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line|d712f2db8b17e8afa87bddad01ab4d290c91519c
+7|foo|0|0|0|0|0|0|0|128|Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|caba624d98773e7643fe2687855cd4e0af4a81d5
 " NOCOLOR
 
 
@@ -308,7 +329,14 @@ Error: (Line 4) Failed to parse total count \"9088521487234928374928342394872397
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
+6|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line|d712f2db8b17e8afa87bddad01ab4d290c91519c
+7|foo|0|0|0|0|0|0|0|128|Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|caba624d98773e7643fe2687855cd4e0af4a81d5
+8|foo|0|0|0|0|0|0|0|128|Failed to parse total count \"908852148723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|38403f147ddf07ab3acd19b9a285b8101c561ec3
 " NOCOLOR
 
 
@@ -346,7 +374,15 @@ Error: (Line 4) Unexpected log line format:
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
+6|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line|d712f2db8b17e8afa87bddad01ab4d290c91519c
+7|foo|0|0|0|0|0|0|0|128|Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|caba624d98773e7643fe2687855cd4e0af4a81d5
+8|foo|0|0|0|0|0|0|0|128|Failed to parse total count \"908852148723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|38403f147ddf07ab3acd19b9a285b8101c561ec3
+9|foo|0|0|0|0|0|0|0|128|Unexpected log line format|7ec25bc8506af2b8ea1db5bf77690a055c2ded67
 " NOCOLOR
 
 
@@ -377,8 +413,16 @@ I logchunk.import: Log inserted into the database successfully.
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
-2|foo|1703554088|1703554116|303104|1073|0|0|2|1
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
+6|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line|d712f2db8b17e8afa87bddad01ab4d290c91519c
+7|foo|0|0|0|0|0|0|0|128|Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|caba624d98773e7643fe2687855cd4e0af4a81d5
+8|foo|0|0|0|0|0|0|0|128|Failed to parse total count \"908852148723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|38403f147ddf07ab3acd19b9a285b8101c561ec3
+9|foo|0|0|0|0|0|0|0|128|Unexpected log line format|7ec25bc8506af2b8ea1db5bf77690a055c2ded67
+10|foo|1703554088|1703554116|303104|1073|0|0|2|1||
 " NOCOLOR
 
 
@@ -413,8 +457,17 @@ Error: (Line 2) Unexpected PID change from 810 to 811 on file change line:
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
-2|foo|1703554088|1703554116|303104|1073|0|0|2|1
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
+6|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line|d712f2db8b17e8afa87bddad01ab4d290c91519c
+7|foo|0|0|0|0|0|0|0|128|Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|caba624d98773e7643fe2687855cd4e0af4a81d5
+8|foo|0|0|0|0|0|0|0|128|Failed to parse total count \"908852148723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|38403f147ddf07ab3acd19b9a285b8101c561ec3
+9|foo|0|0|0|0|0|0|0|128|Unexpected log line format|7ec25bc8506af2b8ea1db5bf77690a055c2ded67
+10|foo|1703554088|1703554116|303104|1073|0|0|2|1||
+11|foo|0|0|0|0|0|0|0|128|Unexpected PID change from 810 to 811 on file change line|80c0f33423ac23b5d8e50f2c03d6c9c3736bc879
 " NOCOLOR
 
 
@@ -449,9 +502,18 @@ I logchunk.import: Log inserted into the database successfully.
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
-2|foo|1703554088|1703554116|303104|1073|0|0|2|1
-3|foo|1703554088|1703554126|277419|2605|90885214872349|144239|5|0
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
+6|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line|d712f2db8b17e8afa87bddad01ab4d290c91519c
+7|foo|0|0|0|0|0|0|0|128|Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|caba624d98773e7643fe2687855cd4e0af4a81d5
+8|foo|0|0|0|0|0|0|0|128|Failed to parse total count \"908852148723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|38403f147ddf07ab3acd19b9a285b8101c561ec3
+9|foo|0|0|0|0|0|0|0|128|Unexpected log line format|7ec25bc8506af2b8ea1db5bf77690a055c2ded67
+10|foo|1703554088|1703554116|303104|1073|0|0|2|1||
+11|foo|0|0|0|0|0|0|0|128|Unexpected PID change from 810 to 811 on file change line|80c0f33423ac23b5d8e50f2c03d6c9c3736bc879
+12|foo|1703554088|1703554126|277419|2605|90885214872349|144239|5|0||
 " NOCOLOR
 
 
@@ -483,10 +545,19 @@ I logchunk.import: Log inserted into the database successfully.
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
-2|foo|1703554088|1703554116|303104|1073|0|0|2|1
-3|foo|1703554088|1703554126|277419|2605|90885214872349|144239|5|0
-4|foo|1703554088|1682427893|460|34|0|78648723|2|4
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
+6|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line|d712f2db8b17e8afa87bddad01ab4d290c91519c
+7|foo|0|0|0|0|0|0|0|128|Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|caba624d98773e7643fe2687855cd4e0af4a81d5
+8|foo|0|0|0|0|0|0|0|128|Failed to parse total count \"908852148723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|38403f147ddf07ab3acd19b9a285b8101c561ec3
+9|foo|0|0|0|0|0|0|0|128|Unexpected log line format|7ec25bc8506af2b8ea1db5bf77690a055c2ded67
+10|foo|1703554088|1703554116|303104|1073|0|0|2|1||
+11|foo|0|0|0|0|0|0|0|128|Unexpected PID change from 810 to 811 on file change line|80c0f33423ac23b5d8e50f2c03d6c9c3736bc879
+12|foo|1703554088|1703554126|277419|2605|90885214872349|144239|5|0||
+13|foo|1703554088|1682427893|460|34|0|78648723|2|4||
 " NOCOLOR
 
 
@@ -517,9 +588,65 @@ I logchunk.import: Log inserted into the database successfully.
 " NOCOLOR
 is errlvl 8
 is out "\
-1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0
-2|foo|1703554088|1703554116|303104|1073|0|0|2|1
-3|foo|1703554088|1703554126|277419|2605|90885214872349|144239|5|0
-4|foo|1703554088|1682427893|460|34|0|78648723|2|4
-5|foo|1703554088|1682695737|460|34|0|0|2|16
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
+6|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line|d712f2db8b17e8afa87bddad01ab4d290c91519c
+7|foo|0|0|0|0|0|0|0|128|Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|caba624d98773e7643fe2687855cd4e0af4a81d5
+8|foo|0|0|0|0|0|0|0|128|Failed to parse total count \"908852148723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|38403f147ddf07ab3acd19b9a285b8101c561ec3
+9|foo|0|0|0|0|0|0|0|128|Unexpected log line format|7ec25bc8506af2b8ea1db5bf77690a055c2ded67
+10|foo|1703554088|1703554116|303104|1073|0|0|2|1||
+11|foo|0|0|0|0|0|0|0|128|Unexpected PID change from 810 to 811 on file change line|80c0f33423ac23b5d8e50f2c03d6c9c3736bc879
+12|foo|1703554088|1703554126|277419|2605|90885214872349|144239|5|0||
+13|foo|1703554088|1682427893|460|34|0|78648723|2|4||
+14|foo|1703554088|1682695737|460|34|0|0|2|16||
+" NOCOLOR
+
+
+
+(
+    cd "$test_tmpdir"
+    mkdir -p test1
+    cat <<EOF > test1/test.log
+garbage
+EOF
+    rm -f *.chunk
+
+)
+
+try "logchunk -vvv import \"$test_tmpdir/test.db\" foo \"$test_tmpdir\" < \"$test_tmpdir/test1/test.log\" && exit 3
+echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
+[ -e \"$test_tmpdir\"/*.chunk ] || {
+   echo 'chunk file expected' >&2
+   exit 5
+}
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/d596aa409dbcf4bf9d9d57252304a921bd02e3fc.chunk\" || exit 6
+exit 8
+" \
+    "chunk garbage"
+is err "\
+Error: (Line 1) Unexpected start line format:
+  garbage
+
+  Failed chunk is saved to \"$test_tmpdir/d596aa409dbcf4bf9d9d57252304a921bd02e3fc.chunk\"
+" NOCOLOR
+is errlvl 8
+is out "\
+1|foo|1677374888|1677374926|303104|1073|9088521|149707|2|0||
+2|foo|0|0|0|0|0|0|0|128|Unexpected start line format|9ce5bc5c2078c6870dde8d6090fbf30ed37fde50
+3|foo|0|0|0|0|0|0|0|128|Invalid UTF-8 data [ff fe fd]|f09626f3ff80600048d7cfe413957134027d1b4d
+4|foo|0|0|0|0|0|0|0|128|Unexpected lines found after the end line|2b6567a90e9f08d491c94c6a518f15aff1c39504
+5|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line|62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5
+6|foo|0|0|0|0|0|0|0|128|Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line|d712f2db8b17e8afa87bddad01ab4d290c91519c
+7|foo|0|0|0|0|0|0|0|128|Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|caba624d98773e7643fe2687855cd4e0af4a81d5
+8|foo|0|0|0|0|0|0|0|128|Failed to parse total count \"908852148723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line|38403f147ddf07ab3acd19b9a285b8101c561ec3
+9|foo|0|0|0|0|0|0|0|128|Unexpected log line format|7ec25bc8506af2b8ea1db5bf77690a055c2ded67
+10|foo|1703554088|1703554116|303104|1073|0|0|2|1||
+11|foo|0|0|0|0|0|0|0|128|Unexpected PID change from 810 to 811 on file change line|80c0f33423ac23b5d8e50f2c03d6c9c3736bc879
+12|foo|1703554088|1703554126|277419|2605|90885214872349|144239|5|0||
+13|foo|1703554088|1682427893|460|34|0|78648723|2|4||
+14|foo|1703554088|1682695737|460|34|0|0|2|16||
+15|foo|0|0|0|0|0|0|0|128|Unexpected start line format|d596aa409dbcf4bf9d9d57252304a921bd02e3fc
 " NOCOLOR

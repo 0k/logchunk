@@ -14,6 +14,7 @@ const ERR_CHUNK_NO_START: u8                     = 0b0000_0010;
 const ERR_CONNECTION_CLOSED: u8                  = 0b0000_0100;
 const ERR_CONNECTION_CLOSED_WITOUT_FOLLOW_UP: u8 = 0b0000_1000;
 const ERR_SIGNAL_RECEIVED: u8                    = 0b0001_0000;
+const ERR_PARSE_ERROR: u8                        = 0b1000_0000;
 
 
 pub trait BufReadExt: BufRead {
@@ -59,6 +60,8 @@ struct RsyncLog {
     total_bytes_sent_final: i64,
     num_files_changed: i64,
     chunk_parse_error: u8,
+    error_message: Option<String>,
+    chunk_sha1: Option<String>,
 }
 
 fn create_table_if_not_exists(conn: &Connection) -> SqliteResult<()> {
@@ -73,7 +76,9 @@ fn create_table_if_not_exists(conn: &Connection) -> SqliteResult<()> {
              total_bytes_sync_final INTEGER NOT NULL,
              total_bytes_sent_final INTEGER NOT NULL,
              num_files_changed INTEGER NOT NULL,
-             chunk_parse_error INTEGER NOT NULL
+             chunk_parse_error INTEGER NOT NULL,
+             error_message TEXT,
+             chunk_sha1 TEXT
          )",
         [],
     )?;
@@ -91,9 +96,11 @@ fn insert_log(conn: &Connection, log: &RsyncLog) -> SqliteResult<()> {
              total_bytes_sync_final,
              total_bytes_sent_final,
              num_files_changed,
-             chunk_parse_error
+             chunk_parse_error,
+             error_message,
+             chunk_sha1
          )
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         params![
             log.label,
             log.start_time.to_string(),
@@ -104,10 +111,13 @@ fn insert_log(conn: &Connection, log: &RsyncLog) -> SqliteResult<()> {
             log.total_bytes_sent_final,
             log.num_files_changed,
             log.chunk_parse_error,
+            log.error_message,
+            log.chunk_sha1,
         ],
     )?;
     Ok(())
 }
+
 
 fn parse_timestamp(s: &str) -> Result<NaiveDateTime, ParseError> {
     NaiveDateTime::parse_from_str(s, "%Y/%m/%d %H:%M:%S")
@@ -223,6 +233,23 @@ pub fn load(label: &str, sqlite_db_path: &str, failed_chunk_folder: &str) -> Res
             copy_lines_iter.for_each(|_| {});  // consume the iterator to save the failed chunk
 
             failed_chunk_file.persist(&failed_chunk_path).map_err(|e| e.to_string())?;
+            let log = RsyncLog {
+                label: label.to_string(),
+                start_time: 0,
+                end_time: 0,
+                total_bytes_sync: 0,
+                total_bytes_sent: 0,
+                total_bytes_sync_final: 0,
+                total_bytes_sent_final: 0,
+                num_files_changed: 0,
+                chunk_parse_error: ERR_PARSE_ERROR,
+                error_message: Some(e.clone()),
+                chunk_sha1: Some(sha1),
+            };
+            let conn = Connection::open(sqlite_db_path).map_err(|e| e.to_string())?;
+            create_table_if_not_exists(&conn).map_err(|e| e.to_string())?;
+            insert_log(&conn, &log).map_err(|e| e.to_string())?;
+
             return Err(format!("(Line {}) {}:\n  {}\n\n  Failed chunk is saved to {:?}", last_idx, e, last_failed_line, failed_chunk_path));
         }
     }
@@ -386,6 +413,8 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
         total_bytes_sent_final,
         num_files_changed,
         chunk_parse_error,
+        error_message: None,
+        chunk_sha1: None,
     };
 
     Ok(log)
