@@ -70,7 +70,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
    ls -al \"$test_tmpdir/\" >&2
    exit 5
 }
-diff \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/9ce5bc5c2078c6870dde8d6090fbf30ed37fde50.chunk\" || exit 6
+diff \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/foo-9ce5bc5c2078c6870dde8d6090fbf30ed37fde50.chunk\" || exit 6
 exit 8
 " \
     "chunk with no first line"
@@ -78,7 +78,7 @@ is err "\
 Error: (Line 1) Unexpected start line format:
   2023/02/26 01:28:36 [7384] >f..t...... recv .config/https%3A/chat.kal.fr/GPUCache/data_1 270336 438
 
-  Failed chunk is saved to \"$test_tmpdir/9ce5bc5c2078c6870dde8d6090fbf30ed37fde50.chunk\"
+  Failed chunk is saved to \"$test_tmpdir/foo-9ce5bc5c2078c6870dde8d6090fbf30ed37fde50.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -104,7 +104,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
    ls -al \"$test_tmpdir\" >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/f09626f3ff80600048d7cfe413957134027d1b4d.chunk\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/foo-f09626f3ff80600048d7cfe413957134027d1b4d.chunk\" || exit 6
 exit 8
 " \
     "chunk with non unicode data"
@@ -112,7 +112,7 @@ is err "\
 Error: (Line 1) Invalid UTF-8 data [ff fe fd]:
   ���
 
-  Failed chunk is saved to \"$test_tmpdir/f09626f3ff80600048d7cfe413957134027d1b4d.chunk\"
+  Failed chunk is saved to \"$test_tmpdir/foo-f09626f3ff80600048d7cfe413957134027d1b4d.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -144,7 +144,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/2b6567a90e9f08d491c94c6a518f15aff1c39504.chunk\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/foo-2b6567a90e9f08d491c94c6a518f15aff1c39504.chunk\" || exit 6
 exit 8
 " \
     "chunk with data after last line"
@@ -152,7 +152,7 @@ is err "\
 Error: (Line 5) Unexpected lines found after the end line:
   2023/02/26 01:28:46 [7384] spurious data
 
-  Failed chunk is saved to \"$test_tmpdir/2b6567a90e9f08d491c94c6a518f15aff1c39504.chunk\"
+  Failed chunk is saved to \"$test_tmpdir/foo-2b6567a90e9f08d491c94c6a518f15aff1c39504.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -184,7 +184,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5.chunk\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/foo-62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5.chunk\" || exit 6
 exit 8
 " \
     "chunk with invalid date first line"
@@ -192,7 +192,7 @@ is err "\
 Error: (Line 1) Failed to parse \"2023/13/26 01:28:08\" as a date (input is out of range) on first chunk line:
   2023/13/26 01:28:08 [7384] receiving file list
 
-  Failed chunk is saved to \"$test_tmpdir/62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5.chunk\"
+  Failed chunk is saved to \"$test_tmpdir/foo-62e7d1c8a11e4fb03cdfdf7184ca0ccad7030ef5.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -224,7 +224,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/d712f2db8b17e8afa87bddad01ab4d290c91519c.chunk\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/foo-d712f2db8b17e8afa87bddad01ab4d290c91519c.chunk\" || exit 6
 exit 8
 " \
     "chunk with invalid date end line"
@@ -232,7 +232,7 @@ is err "\
 Error: (Line 4) Failed to parse \"2023/13/26 01:28:46\" as a date (input is out of range) on last chunk line:
   2023/13/26 01:28:46 [7384] sent 544 bytes  received 149707 bytes  total size 9088521
 
-  Failed chunk is saved to \"$test_tmpdir/d712f2db8b17e8afa87bddad01ab4d290c91519c.chunk\"
+  Failed chunk is saved to \"$test_tmpdir/foo-d712f2db8b17e8afa87bddad01ab4d290c91519c.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -266,7 +266,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/caba624d98773e7643fe2687855cd4e0af4a81d5.chunk\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/foo-caba624d98773e7643fe2687855cd4e0af4a81d5.chunk\" || exit 6
 exit 8
 " \
     "chunk with invalid received count"
@@ -274,7 +274,7 @@ is err "\
 Error: (Line 4) Failed to parse received count \"14423948723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line:
   2023/12/26 01:28:46 [7384] sent 544 bytes  received 14423948723492837492834239487239707 bytes  total size 9088521
 
-  Failed chunk is saved to \"$test_tmpdir/caba624d98773e7643fe2687855cd4e0af4a81d5.chunk\"
+  Failed chunk is saved to \"$test_tmpdir/foo-caba624d98773e7643fe2687855cd4e0af4a81d5.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -310,7 +310,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/38403f147ddf07ab3acd19b9a285b8101c561ec3.chunk\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/foo-38403f147ddf07ab3acd19b9a285b8101c561ec3.chunk\" || exit 6
 exit 8
 " \
     "chunk with invalid total count"
@@ -318,7 +318,7 @@ is err "\
 Error: (Line 4) Failed to parse total count \"908852148723492837492834239487239707\" as an i64 integer (number too large to fit in target type) on last chunk line:
   2023/12/26 01:28:46 [7384] sent 544 bytes  received 144239 bytes  total size 908852148723492837492834239487239707
 
-  Failed chunk is saved to \"$test_tmpdir/38403f147ddf07ab3acd19b9a285b8101c561ec3.chunk\"
+  Failed chunk is saved to \"$test_tmpdir/foo-38403f147ddf07ab3acd19b9a285b8101c561ec3.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -355,7 +355,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/7ec25bc8506af2b8ea1db5bf77690a055c2ded67.chunk\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/foo-7ec25bc8506af2b8ea1db5bf77690a055c2ded67.chunk\" || exit 6
 exit 8
 " \
     "chunk with unexpected log line format"
@@ -363,7 +363,7 @@ is err "\
 Error: (Line 4) Unexpected log line format:
   2023/12/26 01:28:36 [7384] >fX.t...... recv .config/https%3A/chat.lokavaluto.fr/Cookies 32768 635
 
-  Failed chunk is saved to \"$test_tmpdir/7ec25bc8506af2b8ea1db5bf77690a055c2ded67.chunk\"
+  Failed chunk is saved to \"$test_tmpdir/foo-7ec25bc8506af2b8ea1db5bf77690a055c2ded67.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -438,7 +438,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/80c0f33423ac23b5d8e50f2c03d6c9c3736bc879.chunk\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/foo-80c0f33423ac23b5d8e50f2c03d6c9c3736bc879.chunk\" || exit 6
 exit 8
 " \
     "chunk with pid mismatch"
@@ -446,7 +446,7 @@ is err "\
 Error: (Line 2) Unexpected PID change from 810 to 811 on file change line:
   2023/12/26 01:28:36 [811] >f..t...... recv .config/https%3A/chat.kal.fr/GPUCache/data_1 270336 438
 
-  Failed chunk is saved to \"$test_tmpdir/80c0f33423ac23b5d8e50f2c03d6c9c3736bc879.chunk\"
+  Failed chunk is saved to \"$test_tmpdir/foo-80c0f33423ac23b5d8e50f2c03d6c9c3736bc879.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\
@@ -615,7 +615,7 @@ echo 'SELECT * FROM rsync_log;' | sqlite3 \"$test_tmpdir/test.db\" || exit 4
    echo 'chunk file expected' >&2
    exit 5
 }
-diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/d596aa409dbcf4bf9d9d57252304a921bd02e3fc.chunk\" || exit 6
+diff -u \"$test_tmpdir/test1/test.log\" \"$test_tmpdir/foo-d596aa409dbcf4bf9d9d57252304a921bd02e3fc.chunk\" || exit 6
 exit 8
 " \
     "chunk garbage"
@@ -623,7 +623,7 @@ is err "\
 Error: (Line 1) Unexpected start line format:
   garbage
 
-  Failed chunk is saved to \"$test_tmpdir/d596aa409dbcf4bf9d9d57252304a921bd02e3fc.chunk\"
+  Failed chunk is saved to \"$test_tmpdir/foo-d596aa409dbcf4bf9d9d57252304a921bd02e3fc.chunk\"
 " NOCOLOR
 is errlvl 8
 is out "\

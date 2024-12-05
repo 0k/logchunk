@@ -227,7 +227,7 @@ pub fn load(label: &str, sqlite_db_path: &str, failed_chunk_folder: &str) -> Res
             let sha1 = file_sha1(
                 failed_chunk_file.reopen().map_err(|e| e.to_string())?
             ).map_err(|e| e.to_string())?;
-            let failed_chunk_path = format!("{}/{}.chunk", failed_chunk_folder, sha1);
+            let failed_chunk_path = format!("{}/{}-{}.chunk", failed_chunk_folder, label, sha1);
             // fetch last line of the failed chunk
             let last_failed_line = String::from_utf8_lossy(&last_line.borrow()).to_string();
 
