@@ -1,12 +1,5 @@
 # -*- mode: shell-script -*-
 
-#src_file=../src/usr/local/sbin/swallow
-
-# prefix_cmd="
-# . /etc/shlib
-
-# source '$src_file'
-
 
 (
     cd "$test_tmpdir"
