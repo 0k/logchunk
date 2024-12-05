@@ -5,6 +5,7 @@ use std::io::{self, BufRead, Write};
 use std::fs::File;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::fs;
 use std::fmt::Write as OtherWrite;
 use tempfile::NamedTempFile;
 
@@ -193,7 +194,8 @@ fn file_sha1(file: File) -> Result<String, String> {
 pub fn load(label: &str, sqlite_db_path: &str, failed_chunk_folder: &str) -> Result<(), String> {
     let stdin = io::stdin();
     let reader = stdin.lock().split_with_delimiter(b'\n');
-    let failed_chunk_file = NamedTempFile::new()
+    fs::create_dir_all(failed_chunk_folder).map_err(|e| e.to_string())?;
+    let failed_chunk_file = NamedTempFile::new_in(failed_chunk_folder)
         .map_err(|e| e.to_string())?;
 
     let last_line = Rc::new(RefCell::new(Vec::new()));
