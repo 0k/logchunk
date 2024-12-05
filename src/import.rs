@@ -278,7 +278,7 @@ fn load_iter(label: &str, reader: &mut impl Iterator<Item = Result<String, Strin
         Regex::new(r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(\d+)\] sent (\d+) bytes\s+received (\d+) bytes\s+total size (\d+)$")
         .map_err(|e| e.to_string())?;
     let file_change_re = Regex::new(
-        r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(\d+)\] ([>.ch][L.dfsctp+]+ recv|\*deleting   del.) .* (\d+) (\d+)$",
+        r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(\d+)\] ([>.ch][L.dfsctpgo+]+ recv|\*deleting   del.) .* (\d+) (\d+)$",
     ).map_err(|e| e.to_string())?;
     let connection_closed_re = Regex::new(
         r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(\d+)\] rsync: connection unexpectedly closed \((\d+) bytes received so far\) \[generator\]$",
